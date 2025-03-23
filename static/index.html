@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>精美课程表</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#5D5CDE',
+            secondary: '#FF6B6B',
+            success: '#4CAF50',
+            info: '#2196F3',
+            warning: '#FFC107',
+            danger: '#F44336',
+            light: {
+              background: '#FFFFFF',
+              surface: '#F5F7FA',
+              border: '#E4E7EB',
+              text: '#333333',
+            },
+            dark: {
+              background: '#181818',
+              surface: '#222222',
+              border: '#333333',
+              text: '#F5F5F5',
+            }
+          },
+          animation: {
+            'bounce-slow': 'bounce 3s infinite',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .course-cell {
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .course-cell:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 10;
+    }
+
+    .pulse-animation {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(93, 92, 222, 0.4);
+      }
+      70% {
+        box-shadow: 0 0 0 10px rgba(93, 92, 222, 0);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(93, 92, 222, 0);
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .meal-time {
+      background-image: linear-gradient(135deg, rgba(255,255,255,.1) 25%, transparent 25%,
+                                      transparent 50%, rgba(255,255,255,.1) 50%,
+                                      rgba(255,255,255,.1) 75%, transparent 75%, transparent);
+      background-size: 10px 10px;
+    }
+
+    .time-label {
+      position: relative;
+    }
+
+    .time-label::after {
+      content: '';
+      position: absolute;
+      height: 1px;
+      width: 100%;
+      background-color: currentColor;
+      opacity: 0.1;
+      left: 0;
+      top: 50%;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    .dark ::-webkit-scrollbar-track {
+      background: #222;
+    }
+
+    .dark ::-webkit-scrollbar-thumb {
+      background: #444;
+      border-radius: 3px;
+    }
+
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #bbb;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #999;
+    }
+  </style>
+</head>
+<body class="bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text transition-colors duration-300">
+  <div class="min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-primary text-white shadow-md py-4 px-6">
+      <div class="container mx-auto flex justify-between items-center">
+        <h1 class="text-xl md:text-2xl font-bold">我的课程表</h1>
+        <div class="flex space-x-3">
+          <button id="theme-toggle" class="p-2 rounded-full hover:bg-white/20 transition-colors">
+            <i class="fas fa-moon dark:hidden"></i>
+            <i class="fas fa-sun hidden dark:inline"></i>
+          </button>
+          <button id="add-course-btn" class="bg-white text-primary px-3 py-1 rounded-md text-sm shadow-sm hover:bg-gray-100 transition-colors flex items-center">
+            <i class="fas fa-plus mr-1"></i> 添加课程
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow container mx-auto p-4 md:p-6 overflow-x-auto">
+      <!-- Timetable -->
+      <div class="relative overflow-x-auto shadow-md rounded-lg bg-light-surface dark:bg-dark-surface border border-light-border dark:border-dark-border mt-4">
+        <table class="w-full text-sm text-left">
+          <thead class="text-xs uppercase bg-gray-100 dark:bg-gray-800">
+            <tr>
+              <th class="py-3 px-2 md:px-4 text-center w-16 md:w-20">时间</th>
+              <th class="py-3 px-2 md:px-4 text-center">周一</th>
+              <th class="py-3 px-2 md:px-4 text-center">周二</th>
+              <th class="py-3 px-2 md:px-4 text-center">周三</th>
+              <th class="py-3 px-2 md:px-4 text-center">周四</th>
+              <th class="py-3 px-2 md:px-4 text-center">周五</th>
+              <th class="py-3 px-2 md:px-4 text-center">周六</th>
+              <th class="py-3 px-2 md:px-4 text-center">周日</th>
+            </tr>
+          </thead>
+          <tbody id="timetable-body">
+            <!-- Table rows will be generated by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Current Date/Time Indicator -->
+      <div class="text-center my-6">
+        <div class="inline-block bg-light-surface dark:bg-dark-surface rounded-full py-2 px-6 shadow-sm border border-light-border dark:border-dark-border">
+          <span id="current-time" class="text-sm md:text-base font-medium"></span>
+        </div>
+      </div>
+
+      <!-- Course Legend -->
+      <div class="mt-6 bg-light-surface dark:bg-dark-surface p-4 rounded-lg border border-light-border dark:border-dark-border">
+        <h3 class="font-semibold mb-3 text-lg">课程图例</h3>
+        <div id="course-legend" class="flex flex-wrap gap-2 md:gap-4">
+          <!-- Legend items will be added by JavaScript -->
+        </div>
+      </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="course-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+      <div class="bg-light-surface dark:bg-dark-surface rounded-lg shadow-xl w-full max-w-md mx-4 fade-in">
+        <div class="p-5 border-b border-light-border dark:border-dark-border">
+          <h3 id="modal-title" class="text-lg font-semibold">添加新课程</h3>
+        </div>
+        <form id="course-form" class="p-5">
+          <input type="hidden" id="course-id">
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1" for="course-name">
+              课程名称 <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="course-name" class="w-full p-2 border border-light-border dark:border-dark-border rounded bg-light-background dark:bg-dark-background text-base" required>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1" for="course-teacher">
+              教师
+            </label>
+            <input type="text" id="course-teacher" class="w-full p-2 border border-light-border dark:border-dark-border rounded bg-light-background dark:bg-dark-background text-base">
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1" for="course-location">
+              上课地点
+            </label>
+            <input type="text" id="course-location" class="w-full p-2 border border-light-border dark:border-dark-border rounded bg-light-background dark:bg-dark-background text-base">
+          </div>
+          <div class="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm font-medium mb-1" for="course-day">
+                星期 <span class="text-red-500">*</span>
+              </label>
+              <select id="course-day" class="w-full p-2 border border-light-border dark:border-dark-border rounded bg-light-background dark:bg-dark-background text-base" required>
+                <option value="">请选择</option>
+                <option value="1">周一</option>
+                <option value="2">周二</option>
+                <option value="3">周三</option>
+                <option value="4">周四</option>
+                <option value="5">周五</option>
+                <option value="6">周六</option>
+                <option value="7">周日</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1" for="course-time">
+                时间 <span class="text-red-500">*</span>
+              </label>
+              <select id="course-time" class="w-full p-2 border border-light-border dark:border-dark-border rounded bg-light-background dark:bg-dark-background text-base" required>
+                <option value="">请选择</option>
+                <!-- Options will be added by JavaScript -->
+              </select>
+            </div>
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1" for="course-color">
+              课程颜色
+            </label>
+            <div class="flex flex-wrap gap-2 mt-2" id="color-options">
+              <!-- Color options will be added by JavaScript -->
+            </div>
+          </div>
+          <div class="flex justify-end mt-6 space-x-3">
+            <button type="button" id="modal-cancel" class="px-4 py-2 border border-light-border dark:border-dark-border rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              取消
+            </button>
+            <button type="button" id="modal-delete" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors hidden">
+              删除
+            </button>
+            <button type="submit" id="modal-save" class="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90 transition-colors">
+              保存
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="py-4 px-6 text-center text-sm text-gray-500 dark:text-gray-400 border-t border-light-border dark:border-dark-border">
+      <p>© 2023 课程表应用 - 使用Flask与SQLite构建</p>
+    </footer>
+  </div>
+
+  <script>
+    // API URL - 根据部署环境修改
+    const API_URL = '/api';
+
+    // Check for dark mode preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+
+    // Toggle theme
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+    });
+
+    // 数据管理对象
+    const DB = {
+      courses: [],
+      fixedEvents: [],
+
+      async initialize() {
+        try {
+          const response = await fetch(`${API_URL}/events`);
+          if (!response.ok) {
+            throw new Error(`API错误: ${response.status}`);
+          }
+
+          const data = await response.json();
+          this.courses = data.courses;
+          this.fixedEvents = data.fixedEvents;
+          return true;
+        } catch (error) {
+          console.error('初始化数据失败:', error);
+          return false;
+        }
+      },
+
+      getAllEvents() {
+        return [...this.courses, ...this.fixedEvents];
+      },
+
+      async addCourse(course) {
+        try {
+          const response = await fetch(`${API_URL}/courses`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(course)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || '添加课程失败');
+          }
+
+          const newCourse = await response.json();
+          this.courses.push(newCourse);
+          return newCourse;
+        } catch (error) {
+          console.error('添加课程错误:', error);
+          throw error;
+        }
+      },
+
+      getCourse(id) {
+        return this.courses.find(course => course.id === id);
+      },
+
+      async updateCourse(id, updatedCourse) {
+        try {
+          const response = await fetch(`${API_URL}/courses/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedCourse)
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || '更新课程失败');
+          }
+
+          const updated = await response.json();
+
+          // 更新本地数据
+          const index = this.courses.findIndex(course => course.id === id);
+          if (index !== -1) {
+            this.courses[index] = updated;
+          }
+
+          return updated;
+        } catch (error) {
+          console.error('更新课程错误:', error);
+          throw error;
+        }
+      },
+
+      async deleteCourse(id) {
+        try {
+          const response = await fetch(`${API_URL}/courses/${id}`, {
+            method: 'DELETE'
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || '删除课程失败');
+          }
+
+          // 更新本地数据
+          const index = this.courses.findIndex(course => course.id === id);
+          if (index !== -1) {
+            this.courses.splice(index, 1);
+          }
+
+          return true;
+        } catch (error) {
+          console.error('删除课程错误:', error);
+          throw error;
+        }
+      }
+    };
+
+    // 应用管理对象
+    const App = {
+      async init() {
+        this.showLoading();
+        try {
+          await this.loadData();
+          this.renderTimetable();
+          this.renderLegend();
+          this.setupTimeSlots();
+          this.setupColorOptions();
+          this.setupEventListeners();
+          this.updateCurrentTime();
+          setInterval(() => this.updateCurrentTime(), 60000); // 每分钟更新时间
+        } catch (error) {
+          this.showError(error.message);
+        }
+      },
+
+      showLoading() {
+        const tableBody = document.getElementById('timetable-body');
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="8" class="text-center py-8">
+              <div class="flex justify-center items-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <span class="ml-2">正在加载数据...</span>
+              </div>
+            </td>
+          </tr>
+        `;
+      },
+
+      showError(message) {
+        const tableBody = document.getElementById('timetable-body');
+        tableBody.innerHTML = `
+          <tr>
+            <td colspan="8" class="text-center py-8 text-red-500">
+              <div class="flex flex-col items-center">
+                <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                <div>${message || '加载数据失败'}</div>
+                <button id="retry-btn" class="mt-4 px-4 py-2 bg-primary text-white rounded">重试</button>
+              </div>
+            </td>
+          </tr>
+        `;
+
+        document.getElementById('retry-btn').addEventListener('click', () => {
+          this.init();
+        });
+      },
+
+      async loadData() {
+        const success = await DB.initialize();
+        if (!success) {
+          throw new Error('无法从服务器加载数据，请重试');
+        }
+      },
+
+      renderTimetable() {
+        const tableBody = document.getElementById('timetable-body');
+        tableBody.innerHTML = '';
+
+        // Time slots from 6:00 to 22:00
+        const timeSlots = [
+          { hour: 6, label: '06:00 - 07:00' },
+          { hour: 7, label: '07:00 - 08:00' },
+          { hour: 8, label: '08:00 - 09:00' },
+          { hour: 9, label: '09:00 - 10:00' },
+          { hour: 10, label: '10:00 - 11:00' },
+          { hour: 11, label: '11:00 - 12:00' },
+          { hour: 12, label: '12:00 - 13:00' },
+          { hour: 13, label: '13:00 - 14:00' },
+          { hour: 14, label: '14:00 - 15:00' },
+          { hour: 15, label: '15:00 - 16:00' },
+          { hour: 16, label: '16:00 - 17:00' },
+          { hour: 17, label: '17:00 - 18:00' },
+          { hour: 18, label: '18:00 - 19:00' },
+          { hour: 19, label: '19:00 - 20:00' },
+          { hour: 20, label: '20:00 - 21:00' },
+          { hour: 21, label: '21:00 - 22:00' }
+        ];
+
+        const allEvents = DB.getAllEvents();
+
+        timeSlots.forEach(slot => {
+          const row = document.createElement('tr');
+          row.className = 'border-b border-light-border dark:border-dark-border hover:bg-gray-50 dark:hover:bg-gray-700';
+
+          // Time column
+          const timeCell = document.createElement('td');
+          timeCell.className = 'py-2 px-1 md:px-2 text-center font-medium time-label whitespace-nowrap';
+          timeCell.textContent = slot.hour + ':00';
+          row.appendChild(timeCell);
+
+          // Each day of the week (1-7 for Monday-Sunday)
+          for (let day = 1; day <= 7; day++) {
+            const cell = document.createElement('td');
+            cell.className = 'py-2 px-1 md:px-2 border-l border-light-border dark:border-dark-border text-center relative';
+
+            // Check for events at this time slot and day
+            const events = allEvents.filter(event => {
+              const days = event.day.split(',').map(Number);
+              const times = event.time.split(',').map(Number);
+              return days.includes(day) && times.includes(slot.hour);
+            });
+
+            if (events.length > 0) {
+              // Create course cells
+              events.forEach(event => {
+                const courseElem = document.createElement('div');
+                courseElem.className = `course-cell ${event.color} p-1 mb-1 rounded-md text-xs md:text-sm shadow-sm`;
+                courseElem.dataset.id = event.id;
+                courseElem.dataset.type = event.type;
+
+                if (event.type === 'meal') {
+                  courseElem.classList.add('meal-time');
+                }
+
+                const nameElem = document.createElement('div');
+                nameElem.className = 'font-medium';
+                nameElem.textContent = event.name;
+                courseElem.appendChild(nameElem);
+
+                if (event.teacher) {
+                  const teacherElem = document.createElement('div');
+                  teacherElem.className = 'text-xs opacity-80';
+                  teacherElem.textContent = event.teacher;
+                  courseElem.appendChild(teacherElem);
+                }
+
+                if (event.location) {
+                  const locationElem = document.createElement('div');
+                  locationElem.className = 'text-xs opacity-80';
+                  locationElem.textContent = event.location;
+                  courseElem.appendChild(locationElem);
+                }
+
+                cell.appendChild(courseElem);
+              });
+            } else {
+              // Empty slot, add event listener for adding new course
+              cell.dataset.day = day;
+              cell.dataset.time = slot.hour;
+              cell.addEventListener('click', () => {
+                App.showAddCourseModal(day, slot.hour);
+              });
+            }
+
+            row.appendChild(cell);
+          }
+
+          tableBody.appendChild(row);
+        });
+
+        // Add event listeners to course cells
+        document.querySelectorAll('.course-cell[data-type="course"]').forEach(cell => {
+          cell.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const courseId = cell.dataset.id;
+            App.showEditCourseModal(courseId);
+          });
+        });
+      },
+
+      renderLegend() {
+        const legendContainer = document.getElementById('course-legend');
+        legendContainer.innerHTML = '';
+
+        // Group courses by name to avoid duplicates
+        const uniqueCourses = {};
+        DB.courses.forEach(course => {
+          if (!uniqueCourses[course.name]) {
+            uniqueCourses[course.name] = course;
+          }
+        });
+
+        // Add fixed events to legend
+        DB.fixedEvents.forEach(event => {
+          uniqueCourses[event.name] = event;
+        });
+
+        // Create legend items
+        Object.values(uniqueCourses).forEach(course => {
+          const legendItem = document.createElement('div');
+          legendItem.className = `${course.color} px-3 py-1 rounded-full text-sm shadow-sm`;
+          legendItem.textContent = course.name;
+          legendContainer.appendChild(legendItem);
+        });
+      },
+
+      setupTimeSlots() {
+        const timeSelect = document.getElementById('course-time');
+        timeSelect.innerHTML = '<option value="">请选择</option>';
+
+        // Add regular time slots (excluding meal times)
+        for (let hour = 6; hour <= 21; hour++) {
+          // Skip meal times
+          if (hour === 7 || hour === 12 || hour === 18) continue;
+
+          const option = document.createElement('option');
+          option.value = hour;
+          option.textContent = `${hour}:00 - ${hour + 1}:00`;
+          timeSelect.appendChild(option);
+        }
+      },
+
+      setupColorOptions() {
+        const colorOptions = document.getElementById('color-options');
+        colorOptions.innerHTML = '';
+
+        const colors = [
+          { value: 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-100', name: '红色' },
+          { value: 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100', name: '蓝色' },
+          { value: 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-100', name: '绿色' },
+          { value: 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-100', name: '黄色' },
+          { value: 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-100', name: '紫色' },
+          { value: 'bg-pink-100 dark:bg-pink-900 text-pink-800 dark:text-pink-100', name: '粉色' },
+          { value: 'bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-100', name: '靛蓝' },
+          { value: 'bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-100', name: '青色' },
+          { value: 'bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-100', name: '蓝绿' },
+          { value: 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-100', name: '橙色' }
+        ];
+
+        colors.forEach((color, index) => {
+          const option = document.createElement('div');
+          option.className = `${color.value} w-8 h-8 rounded-full cursor-pointer flex items-center justify-center color-option`;
+          option.dataset.color = color.value;
+          option.dataset.colorIndex = index;
+          option.title = color.name;
+          colorOptions.appendChild(option);
+        });
+
+        // Select first color by default
+        this.selectColorOption(0);
+      },
+
+      selectColorOption(index) {
+        document.querySelectorAll('.color-option').forEach(option => {
+          option.innerHTML = '';
+          if (parseInt(option.dataset.colorIndex) === index) {
+            option.innerHTML = '<i class="fas fa-check"></i>';
+          }
+        });
+      },
+
+      getSelectedColor() {
+        const selectedOption = document.querySelector('.color-option i');
+        if (selectedOption) {
+          return selectedOption.parentElement.dataset.color;
+        }
+        return 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-100'; // Default
+      },
+
+      showAddCourseModal(day, time) {
+        const modal = document.getElementById('course-modal');
+        const form = document.getElementById('course-form');
+        const titleElem = document.getElementById('modal-title');
+        const deleteBtn = document.getElementById('modal-delete');
+
+        // Reset form
+        form.reset();
+        document.getElementById('course-id').value = '';
+        titleElem.textContent = '添加新课程';
+        deleteBtn.classList.add('hidden');
+
+        // Pre-select day and time
+        document.getElementById('course-day').value = day;
+        document.getElementById('course-time').value = time;
+
+        // Select default color
+        this.selectColorOption(0);
+
+        // Show modal
+        modal.classList.remove('hidden');
+      },
+
+      showEditCourseModal(courseId) {
+        const course = DB.getCourse(courseId);
+        if (!course) return;
+
+        const modal = document.getElementById('course-modal');
+        const form = document.getElementById('course-form');
+        const titleElem = document.getElementById('modal-title');
+        const deleteBtn = document.getElementById('modal-delete');
+
+        // Fill form with course data
+        document.getElementById('course-id').value = course.id;
+        document.getElementById('course-name').value = course.name;
+        document.getElementById('course-teacher').value = course.teacher || '';
+        document.getElementById('course-location').value = course.location || '';
+
+        // Handle multi-day courses by selecting the first day
+        const days = course.day.split(',');
+        document.getElementById('course-day').value = days[0];
+
+        // Handle multi-hour courses by selecting the first hour
+        const times = course.time.split(',');
+        document.getElementById('course-time').value = times[0];
+
+        // Select color
+        const colorOptions = document.querySelectorAll('.color-option');
+        colorOptions.forEach((option, index) => {
+          if (option.dataset.color === course.color) {
+            this.selectColorOption(index);
+          }
+        });
+
+        // Set modal title and show delete button
+        titleElem.textContent = '编辑课程';
+        deleteBtn.classList.remove('hidden');
+
+        // Show modal
+        modal.classList.remove('hidden');
+      },
+
+      hideModal() {
+        const modal = document.getElementById('course-modal');
+        modal.classList.add('hidden');
+      },
+
+      async saveCourse() {
+        const id = document.getElementById('course-id').value;
+        const name = document.getElementById('course-name').value;
+        const teacher = document.getElementById('course-teacher').value;
+        const location = document.getElementById('course-location').value;
+        const day = document.getElementById('course-day').value;
+        const time = document.getElementById('course-time').value;
+        const color = this.getSelectedColor();
+
+        if (!name || !day || !time) {
+          return false; // Validation failed
+        }
+
+        const courseData = {
+          name,
+          teacher,
+          location,
+          day,
+          time,
+          color
+        };
+
+        try {
+          if (id) {
+            // Update existing course
+            await DB.updateCourse(id, courseData);
+          } else {
+            // Add new course
+            await DB.addCourse(courseData);
+          }
+          return true;
+        } catch (error) {
+          this.showToast(error.message || '保存课程失败', 'error');
+          return false;
+        }
+      },
+
+      async deleteCourse() {
+        const id = document.getElementById('course-id').value;
+        if (!id) return false;
+
+        try {
+          await DB.deleteCourse(id);
+          return true;
+        } catch (error) {
+          this.showToast(error.message || '删除课程失败', 'error');
+          return false;
+        }
+      },
+
+      updateCurrentTime() {
+        const now = new Date();
+        const options = {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        };
+        const timeString = now.toLocaleDateString('zh-CN', options);
+        document.getElementById('current-time').textContent = timeString;
+      },
+
+      showToast(message, type = 'info') {
+        // 创建Toast元素
+        const toast = document.createElement('div');
+        toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg z-50 transform transition-all duration-300 opacity-0 translate-y-2 ${
+          type === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-white'
+        }`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        // 显示Toast
+        setTimeout(() => {
+          toast.classList.remove('opacity-0', 'translate-y-2');
+        }, 10);
+
+        // 隐藏并删除Toast
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => {
+            document.body.removeChild(toast);
+          }, 300);
+        }, 3000);
+      },
+
+      setupEventListeners() {
+        // Add course button
+        document.getElementById('add-course-btn').addEventListener('click', () => {
+          this.showAddCourseModal('', '');
+        });
+
+        // Modal cancel button
+        document.getElementById('modal-cancel').addEventListener('click', () => {
+          this.hideModal();
+        });
+
+        // Modal save button and form submission
+        document.getElementById('course-form').addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          // 显示保存中状态
+          const saveBtn = document.getElementById('modal-save');
+          const originalText = saveBtn.textContent;
+          saveBtn.textContent = '保存中...';
+          saveBtn.disabled = true;
+
+          try {
+            if (await this.saveCourse()) {
+              this.hideModal();
+              this.renderTimetable();
+              this.renderLegend();
+              this.showToast('课程保存成功');
+            }
+          } finally {
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+          }
+        });
+
+        // Modal delete button
+        document.getElementById('modal-delete').addEventListener('click', async () => {
+          if (!confirm('确定要删除这个课程吗？')) return;
+
+          // 显示删除中状态
+          const deleteBtn = document.getElementById('modal-delete');
+          const originalText = deleteBtn.textContent;
+          deleteBtn.textContent = '删除中...';
+          deleteBtn.disabled = true;
+
+          try {
+            if (await this.deleteCourse()) {
+              this.hideModal();
+              this.renderTimetable();
+              this.renderLegend();
+              this.showToast('课程删除成功');
+            }
+          } finally {
+            deleteBtn.textContent = originalText;
+            deleteBtn.disabled = false;
+          }
+        });
+
+        // Color options
+        document.getElementById('color-options').addEventListener('click', (e) => {
+          const colorOption = e.target.closest('.color-option');
+          if (colorOption) {
+            const index = parseInt(colorOption.dataset.colorIndex);
+            this.selectColorOption(index);
+          }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('course-modal').addEventListener('click', (e) => {
+          if (e.target === document.getElementById('course-modal')) {
+            this.hideModal();
+          }
+        });
+      }
+    };
+
+    // Initialize the app
+    document.addEventListener('DOMContentLoaded', () => {
+      App.init();
+    });
+  </script>
+</body>
+</html>
